@@ -1,0 +1,44 @@
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react-swc";
+import path from "path";
+import { componentTagger } from "lovable-tagger";
+
+// https://vitejs.dev/config/
+export default defineConfig(({ mode }) => ({
+  server: {
+    host: "::",
+    port: 5174,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:5002',
+        changeOrigin: true,
+        secure: false,
+      },
+      '/uploads': {
+        target: 'http://localhost:5002',
+        changeOrigin: true,
+        secure: false,
+      },
+    },
+  },
+  plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
+  resolve: {
+    alias: {
+      "@": path.resolve(__dirname, "./src"),
+    },
+  },
+  build: {
+    // Optimize chunking and code splitting
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Example: separate vendor dependencies (like react) into their own chunk
+          vendor: ['react', 'react-dom'],
+          // Add more chunks for other large dependencies if needed
+        },
+      },
+    },
+    // Increase chunk size limit (default is 500KB)
+    chunkSizeWarningLimit: 2000, // Increase to 2MB (or adjust as necessary)
+  },
+}));
