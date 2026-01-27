@@ -304,7 +304,7 @@ export default function CustomizePage() {
       if (sleeves.length || ShirtData.SLEEVES.length) baseSteps.push({ id: 'sleeve', label: 'Sleeves', icon: Sparkles });
       if (neckties.length || ShirtData.NECKTIES.length) baseSteps.push({ id: 'necktie', label: 'Necktie', icon: Sparkles });
       if (bowties.length || ShirtData.BOWTIES.length) baseSteps.push({ id: 'bowtie', label: 'Bowtie', icon: Sparkles });
-      if (backs.length) baseSteps.push({ id: 'back', label: 'Back', icon: Sparkles });
+      // Back step removed as per user request
     } else {
       Object.keys(styleGroups).forEach((key) => {
         baseSteps.push({ id: key, label: key, icon: Sparkles });
@@ -312,7 +312,7 @@ export default function CustomizePage() {
     }
 
     baseSteps.push({ id: 'measurements', label: 'Measurements', icon: Ruler });
-    return baseSteps;
+    return baseSteps.filter(step => step.id !== 'back');
   }, [optionGroups, isShirt, collars.length, cuffs.length, plackets.length, pockets.length, buttons.length, sleeves.length, neckties.length, bowties.length, backs.length, styleGroups]);
 
   const getStepOptions = (stepId: string) => {
@@ -627,14 +627,14 @@ export default function CustomizePage() {
           // Note: 'fit' often defines the base shape, if it has a visual component
           { key: 'fit', zIndex: 10, option: getOpt('fit') },
           { key: 'back-pockets', zIndex: 20, option: getOpt('back-pockets') },
-          { key: 'waist', zIndex: 30, option: getOpt('waist') },
+          { key: 'waist', zIndex: 200, option: getOpt('waist') },
           { key: 'cuffs', zIndex: 40, option: getOpt('cuffs') }
         ].filter(l => l.option);
       }
       return [
         { key: 'fit', zIndex: 10, option: getOpt('fit') },
         { key: 'fastening', zIndex: 50, option: getOpt('fastening') },
-        { key: 'waist', zIndex: 30, option: getOpt('waist') }, // Updated from belt to waist
+        { key: 'waist', zIndex: 200, option: getOpt('waist') }, // Updated from belt to waist
         { key: 'pleats', zIndex: 40, option: getOpt('pleats') },
         { key: 'cuffs', zIndex: 45, option: getOpt('cuffs') }
       ].filter(l => l.option);
