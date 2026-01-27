@@ -152,34 +152,121 @@ export function CustomizationProvider({ children }: { children: React.ReactNode 
         initialStyles[key] = opts.find(o => o.isDefault) || opts[0] || null;
       });
 
+      // Prepare initial state values for restoration
+      let initialFabric = defaultFabric;
+      let initialFabricColor = defaultFabric?.colors?.[0] || '#FFFFFF';
+      let initialStylesState = { ...initialStyles };
+      let initialActiveStep = 'fabric';
+      let initialViewMode: 'front' | 'back' = 'front';
+
+      // Try to load from localStorage
+      const storageKey = `customization_state_${productData._id}`;
+      console.log('CustomizationContext: Loading product:', productData._id);
+
+      try {
+        const savedStateJson = localStorage.getItem(storageKey);
+        console.log('CustomizationContext: Saved state found:', !!savedStateJson);
+
+        if (savedStateJson) {
+          const savedState = JSON.parse(savedStateJson);
+
+          // Restore Fabric
+          if (savedState.fabricId) {
+            const found = mappedFabrics.find(f => f.id === savedState.fabricId);
+            if (found) {
+              initialFabric = found;
+              if (savedState.fabricColor && found.colors?.includes(savedState.fabricColor)) {
+                initialFabricColor = savedState.fabricColor;
+              } else {
+                initialFabricColor = found.colors?.[0] || '#FFFFFF';
+              }
+            }
+          }
+
+          // Restore Styles
+          if (savedState.styles) {
+            Object.entries(savedState.styles).forEach(([cat, id]) => {
+              const found = mappedOptions[cat]?.find(o => o.id === id);
+              if (found) {
+                initialStylesState[cat] = found;
+              }
+            });
+          }
+
+          if (savedState.activeStep) initialActiveStep = savedState.activeStep;
+          if (savedState.viewMode) initialViewMode = savedState.viewMode;
+        }
+      } catch (e) {
+        console.warn("Failed to restore customization state", e);
+      }
+
       setConfig(prev => ({
         ...prev,
-        fabric: defaultFabric,
-        styles: initialStyles,
+        fabric: initialFabric,
+        fabricColor: initialFabricColor,
+        styles: initialStylesState,
         // Keep legacy fields for backward compatibility if needed, using generic map
-        collar: initialStyles['collar'] || null,
-        cuff: initialStyles['cuff'] || null,
-        pocket: initialStyles['pocket'] || null,
-        button: initialStyles['button'] || null,
-        sleeve: initialStyles['sleeve'] || null,
-        placket: initialStyles['placket'] || null,
-        back: initialStyles['back'] || null,
-        necktie: initialStyles['necktie'] || null,
-        bowtie: initialStyles['bowtie'] || null,
+        collar: initialStylesState['collar'] || null,
+        cuff: initialStylesState['cuff'] || null,
+        pocket: initialStylesState['pocket'] || null,
+        button: initialStylesState['button'] || null,
+        sleeve: initialStylesState['sleeve'] || null,
+        placket: initialStylesState['placket'] || null,
+        back: initialStylesState['back'] || null,
+        necktie: initialStylesState['necktie'] || null,
+        bowtie: initialStylesState['bowtie'] || null,
       }));
+
+      setActiveStep(initialActiveStep);
+      setViewMode(initialViewMode);
 
     } catch (error) {
       console.error('Failed to load product', error);
     }
   }, []);
 
+  // Save state to localStorage whenever it changes
+  useEffect(() => {
+    if (!product?._id) return;
+
+    const stateToSave = {
+      fabricId: config.fabric?.id,
+      fabricColor: config.fabricColor,
+      styles: Object.entries(config.styles).reduce((acc, [key, val]) => {
+        if (val?.id) acc[key] = val.id;
+        return acc;
+      }, {} as Record<string, string>),
+      activeStep,
+      viewMode
+    };
+
+    const storageKey = `customization_state_${product._id}`;
+    localStorage.setItem(storageKey, JSON.stringify(stateToSave));
+    console.log('CustomizationContext: Saved state to localStorage for:', product._id);
+
+  }, [product, config, activeStep, viewMode]);
+
   const setOption = (category: string, option: CustomizationOption | null) => {
-    setConfig(prev => ({
-      ...prev,
-      styles: { ...prev.styles, [category]: option },
-      // Update legacy fields for compatibility
-      [category]: option
-    }));
+    setConfig(prev => {
+      const updates: any = {
+        styles: { ...prev.styles, [category]: option },
+        [category]: option
+      };
+
+      // Mutual exclusivity for necktie and bowtie
+      if (category === 'necktie' && option) {
+        updates.bowtie = null;
+        updates.styles.bowtie = null;
+      } else if (category === 'bowtie' && option) {
+        updates.necktie = null;
+        updates.styles.necktie = null;
+      }
+
+      return {
+        ...prev,
+        ...updates
+      };
+    });
   };
 
   const totalPrice = useMemo(() => {
