@@ -16,7 +16,7 @@ This document maintains a record of the development phases, architectural decisi
 # Development Timeline
 
 # Phase 1: Foundation & Architecture 
-*([Date]: Initial Setup)*
+*(14/01/2026: Initial Setup)*
 - Established Monorepo structure: `src/` (Frontend) and `server/` (Backend).
 - Configured **TypeScript** + **Vite** for optimized frontend performance.
 - Set up **Tailwind CSS** with a custom "luxury" design system (Gold/Black/White aesthetic).
