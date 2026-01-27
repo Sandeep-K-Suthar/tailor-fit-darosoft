@@ -14,7 +14,7 @@ import {
   Users, Shield, KeyRound, UserCog, Ban, CheckCircle, Mail, Phone, Sparkles, Palette
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { FabricOption, CustomizationOption } from '@/types/shirt';
 import { Product } from '@/types/product';
 
@@ -48,8 +48,19 @@ export function AdminDashboard() {
     addFabric, addCustomization, removeFabric, removeCustomization,
     updateFabric, updateCustomization,
   } = useShirt();
+  // State for active tab (synced with URL)
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = searchParams.get('tab') || 'orders';
 
-  const [activeTab, setActiveTab] = useState('orders');
+  useEffect(() => {
+    console.log('AdminDashboard: activeTab changed to:', activeTab);
+    console.log('AdminDashboard: URL Search Params:', searchParams.toString());
+  }, [activeTab, searchParams]);
+
+  const setActiveTab = (tab: string) => {
+    console.log('AdminDashboard: Setting active tab to:', tab);
+    setSearchParams({ tab });
+  };
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<any>(null);
@@ -280,28 +291,43 @@ export function AdminDashboard() {
       const data = await res.json();
       const imageUrl = data.path;
 
-      const updatedProduct = { ...productForm };
-      const option = updatedProduct.customizationOptions.optionGroups[groupIndex].options[optionIndex];
+      setProductForm((prev: any) => {
+        // Deep copy the structure to ensure immutability
+        const groups = [...(prev.customizationOptions?.optionGroups || [])];
+        const group = { ...groups[groupIndex] };
+        const options = [...(group.options || [])];
+        const option = { ...options[optionIndex] };
 
-      if (!option.layersByFabric) option.layersByFabric = {};
+        // Ensure layersByFabric is a new object
+        const existingLayers = option.layersByFabric || {};
+        const newLayers = { ...existingLayers };
 
-      // Initialize fabric entry if needed
-      if (!option.layersByFabric[fabricId]) {
-        option.layersByFabric[fabricId] = {};
-      }
+        // Handle legacy string format if exists
+        const currentFabricLayer = typeof newLayers[fabricId] === 'string'
+          ? { front: newLayers[fabricId] }
+          : { ...newLayers[fabricId] };
 
-      // If it was a string (legacy), convert to object
-      if (typeof option.layersByFabric[fabricId] === 'string') {
-        option.layersByFabric[fabricId] = { front: option.layersByFabric[fabricId] };
-      }
+        // Update specific key
+        newLayers[fabricId] = {
+          ...currentFabricLayer,
+          [view]: imageUrl
+        };
 
-      // Update the specific view
-      option.layersByFabric[fabricId] = {
-        ...option.layersByFabric[fabricId],
-        [view]: imageUrl
-      };
+        // Reassign back up the tree
+        option.layersByFabric = newLayers;
+        options[optionIndex] = option;
+        group.options = options;
+        groups[groupIndex] = group;
 
-      setProductForm(updatedProduct);
+        return {
+          ...prev,
+          customizationOptions: {
+            ...prev.customizationOptions,
+            optionGroups: groups
+          }
+        };
+      });
+
       toast.success(`${view === 'front' ? 'Front' : 'Back'} variant uploaded`);
     } catch (error) {
       console.error('Upload error:', error);
@@ -1089,77 +1115,143 @@ export function AdminDashboard() {
                                         {activeVariantOption?.gi === gi && activeVariantOption?.oi === oi && (
                                           <div className="mt-2 p-3 bg-slate-50 rounded-lg border border-slate-200 animate-in slide-in-from-top-2">
                                             <div className="flex items-center justify-between mb-2">
-                                              <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-500">Fabric Variants for {opt.name || 'this option'}</h4>
+                                              <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                                                {['belt', 'waist'].includes(group.category?.toLowerCase()) ? 'Fixed Variants (All Fabrics)' : `Fabric Variants for ${opt.name || 'this option'}`}
+                                              </h4>
                                               <Button variant="ghost" size="xs" onClick={() => setActiveVariantOption(null)} className="h-6 text-xs text-muted-foreground">Close</Button>
                                             </div>
 
-                                            {(!productForm.customizationOptions?.fabrics || productForm.customizationOptions.fabrics.length === 0) ? (
-                                              <p className="text-xs text-muted-foreground italic">No fabrics defined in "Fabrics" tab yet.</p>
-                                            ) : (
-                                              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                                                {productForm.customizationOptions.fabrics.map((fabric: any) => {
-                                                  const variants = opt.layersByFabric?.[fabric.id] || {};
-                                                  const frontImg = typeof variants === 'string' ? variants : variants.front;
-                                                  const backImg = variants.back;
-
+                                            {['belt', 'waist'].includes(group.category?.toLowerCase()) ? (
+                                              // Fixed Color Uploads (Belts, etc.) -> Save to layersByView
+                                              <div className="grid grid-cols-2 gap-3 max-w-xs">
+                                                {(() => {
+                                                  const frontImg = opt.layersByView?.front;
+                                                  const backImg = opt.layersByView?.back;
                                                   return (
-                                                    <div key={fabric.id} className="bg-white border rounded-md p-2 flex flex-col gap-2 shadow-sm">
-                                                      <div className="flex items-center gap-2 mb-1">
-                                                        <div className="w-4 h-4 rounded-full border bg-muted overflow-hidden">
-                                                          {fabric.imageUrl && <img src={fabric.imageUrl} className="w-full h-full object-cover" />}
+                                                    <>
+                                                      {/* Front Upload */}
+                                                      <div className="relative group">
+                                                        <input
+                                                          id={`var-front-fixed-${gi}-${oi}`}
+                                                          type="file"
+                                                          accept="image/*"
+                                                          onChange={(e) => {
+                                                            const file = e.target.files?.[0];
+                                                            if (!file) return;
+                                                            // We'll reuse the handleGroupOptionVariantUpload but mock the fabricId or add a new handler
+                                                            // Actually, let's just create a specific handler or specialized logic here? 
+                                                            // Re-using the same handler is tricky because it expects fabricId.
+                                                            // We will implement a specialized inline handler for simplicty since we are in the render loop or add a new function.
+                                                            // Better: add a new support function or modify existing one. 
+                                                            // For now, let's call a new prop path: 'layersByView.front'
+
+                                                            // Since we can't easily add a new function in this replacement block without context, 
+                                                            // we will assume we can modify handleGroupOptionVariantUpload or use a new one.
+                                                            // Let's rely on a modified handleGroupOptionVariantUpload handling 'fixed' as fabricId.
+                                                            handleGroupOptionVariantUpload(gi, oi, 'fixed', 'front', e);
+                                                          }}
+                                                          className="hidden"
+                                                        />
+                                                        <div
+                                                          className={`aspect-square rounded border flex items-center justify-center cursor-pointer hover:bg-slate-50 relative overflow-hidden ${frontImg ? 'border-primary/50' : 'border-dashed'}`}
+                                                          onClick={() => document.getElementById(`var-front-fixed-${gi}-${oi}`)?.click()}
+                                                          title="Upload Front Variant"
+                                                        >
+                                                          {frontImg ? <img src={frontImg} className="w-full h-full object-contain" /> : <span className="text-[10px] text-center text-muted-foreground">Front View</span>}
                                                         </div>
-                                                        <span className="text-[10px] font-medium truncate flex-1" title={fabric.name}>{fabric.name}</span>
                                                       </div>
 
-                                                      <div className="grid grid-cols-2 gap-2">
-                                                        {/* Front Upload */}
-                                                        <div className="relative group">
-                                                          <input
-                                                            id={`var-front-${gi}-${oi}-${fabric.id}`}
-                                                            type="file"
-                                                            accept="image/*"
-                                                            onChange={(e) => handleGroupOptionVariantUpload(gi, oi, fabric.id, 'front', e)}
-                                                            className="hidden"
-                                                          />
-                                                          <div
-                                                            className={`aspect-square rounded border flex items-center justify-center cursor-pointer hover:bg-slate-50 relative overflow-hidden ${frontImg ? 'border-primary/50' : 'border-dashed'}`}
-                                                            onClick={() => document.getElementById(`var-front-${gi}-${oi}-${fabric.id}`)?.click()}
-                                                            title="Upload Front Variant"
-                                                          >
-                                                            {frontImg ? (
-                                                              <img src={frontImg} className="w-full h-full object-contain" />
-                                                            ) : (
-                                                              <span className="text-[8px] text-center text-muted-foreground">Front</span>
-                                                            )}
-                                                          </div>
-                                                        </div>
-
-                                                        {/* Back Upload */}
-                                                        <div className="relative group">
-                                                          <input
-                                                            id={`var-back-${gi}-${oi}-${fabric.id}`}
-                                                            type="file"
-                                                            accept="image/*"
-                                                            onChange={(e) => handleGroupOptionVariantUpload(gi, oi, fabric.id, 'back', e)}
-                                                            className="hidden"
-                                                          />
-                                                          <div
-                                                            className={`aspect-square rounded border flex items-center justify-center cursor-pointer hover:bg-slate-50 relative overflow-hidden ${backImg ? 'border-primary/50' : 'border-dashed'}`}
-                                                            onClick={() => document.getElementById(`var-back-${gi}-${oi}-${fabric.id}`)?.click()}
-                                                            title="Upload Back Variant"
-                                                          >
-                                                            {backImg ? (
-                                                              <img src={backImg} className="w-full h-full object-contain" />
-                                                            ) : (
-                                                              <span className="text-[8px] text-center text-muted-foreground">Back</span>
-                                                            )}
-                                                          </div>
+                                                      {/* Back Upload */}
+                                                      <div className="relative group">
+                                                        <input
+                                                          id={`var-back-fixed-${gi}-${oi}`}
+                                                          type="file"
+                                                          accept="image/*"
+                                                          onChange={(e) => handleGroupOptionVariantUpload(gi, oi, 'fixed', 'back', e)}
+                                                          className="hidden"
+                                                        />
+                                                        <div
+                                                          className={`aspect-square rounded border flex items-center justify-center cursor-pointer hover:bg-slate-50 relative overflow-hidden ${backImg ? 'border-primary/50' : 'border-dashed'}`}
+                                                          onClick={() => document.getElementById(`var-back-fixed-${gi}-${oi}`)?.click()}
+                                                          title="Upload Back Variant"
+                                                        >
+                                                          {backImg ? <img src={backImg} className="w-full h-full object-contain" /> : <span className="text-[10px] text-center text-muted-foreground">Back View</span>}
                                                         </div>
                                                       </div>
-                                                    </div>
-                                                  );
-                                                })}
+                                                    </>
+                                                  )
+                                                })()}
                                               </div>
+                                            ) : (
+                                              // Standard Per-Fabric Uploads
+                                              (!productForm.customizationOptions?.fabrics || productForm.customizationOptions.fabrics.length === 0) ? (
+                                                <p className="text-xs text-muted-foreground italic">No fabrics defined in "Fabrics" tab yet.</p>
+                                              ) : (
+                                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                                                  {productForm.customizationOptions.fabrics.map((fabric: any) => {
+                                                    const variants = opt.layersByFabric?.[fabric.id] || opt.fabricPreviewImages?.[fabric.id] || {};
+                                                    const frontImg = typeof variants === 'string' ? variants : variants.front;
+                                                    const backImg = variants.back;
+
+                                                    return (
+                                                      <div key={fabric.id} className="bg-white border rounded-md p-2 flex flex-col gap-2 shadow-sm">
+                                                        <div className="flex items-center gap-2 mb-1">
+                                                          <div className="w-4 h-4 rounded-full border bg-muted overflow-hidden">
+                                                            {fabric.imageUrl && <img src={fabric.imageUrl} className="w-full h-full object-cover" />}
+                                                          </div>
+                                                          <span className="text-[10px] font-medium truncate flex-1" title={fabric.name}>{fabric.name}</span>
+                                                        </div>
+
+                                                        <div className="grid grid-cols-2 gap-2">
+                                                          {/* Front Upload */}
+                                                          <div className="relative group">
+                                                            <input
+                                                              id={`var-front-${gi}-${oi}-${fabric.id}`}
+                                                              type="file"
+                                                              accept="image/*"
+                                                              onChange={(e) => handleGroupOptionVariantUpload(gi, oi, fabric.id, 'front', e)}
+                                                              className="hidden"
+                                                            />
+                                                            <div
+                                                              className={`aspect-square rounded border flex items-center justify-center cursor-pointer hover:bg-slate-50 relative overflow-hidden ${frontImg ? 'border-primary/50' : 'border-dashed'}`}
+                                                              onClick={() => document.getElementById(`var-front-${gi}-${oi}-${fabric.id}`)?.click()}
+                                                              title="Upload Front Variant"
+                                                            >
+                                                              {frontImg ? (
+                                                                <img src={frontImg} className="w-full h-full object-contain" />
+                                                              ) : (
+                                                                <span className="text-[8px] text-center text-muted-foreground">Front</span>
+                                                              )}
+                                                            </div>
+                                                          </div>
+
+                                                          {/* Back Upload */}
+                                                          <div className="relative group">
+                                                            <input
+                                                              id={`var-back-${gi}-${oi}-${fabric.id}`}
+                                                              type="file"
+                                                              accept="image/*"
+                                                              onChange={(e) => handleGroupOptionVariantUpload(gi, oi, fabric.id, 'back', e)}
+                                                              className="hidden"
+                                                            />
+                                                            <div
+                                                              className={`aspect-square rounded border flex items-center justify-center cursor-pointer hover:bg-slate-50 relative overflow-hidden ${backImg ? 'border-primary/50' : 'border-dashed'}`}
+                                                              onClick={() => document.getElementById(`var-back-${gi}-${oi}-${fabric.id}`)?.click()}
+                                                              title="Upload Back Variant"
+                                                            >
+                                                              {backImg ? (
+                                                                <img src={backImg} className="w-full h-full object-contain" />
+                                                              ) : (
+                                                                <span className="text-[8px] text-center text-muted-foreground">Back</span>
+                                                              )}
+                                                            </div>
+                                                          </div>
+                                                        </div>
+                                                      </div>
+                                                    );
+                                                  })}
+                                                </div>
+                                              )
                                             )}
                                           </div>
                                         )}
