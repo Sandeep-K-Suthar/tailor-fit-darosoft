@@ -3,7 +3,7 @@ import { Link, useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { useCustomization as useShirt } from '@/context/CustomizationContext';
 import { useCart } from '@/context/CartContext';
 import { useCustomerAuth } from '@/context/CustomerAuthContext';
-import { ArrowLeft, Check, ChevronLeft, ChevronRight, Eye, Layers, Ruler, Save, ShoppingBag, Sparkles, Bookmark, Clock, Settings, Scissors, Home, User, Trash2, Plus, Minus, LogOut, Package } from 'lucide-react';
+import { ArrowLeft, Check, ChevronLeft, ChevronRight, Eye, Layers, Ruler, Save, ShoppingBag, Sparkles, Bookmark, Clock, Settings, Scissors, Home, User, Trash2, Plus, Minus, LogOut, Package, Box } from 'lucide-react';
 import { toast } from 'sonner';
 import defaultShirt from '@/assets/shirt-preview.png';
 import * as ShirtData from '@/data/ShirtCustomizationData';
@@ -1561,11 +1561,21 @@ export default function CustomizePage() {
             {/* Scrollable Options Content */}
             <div className="flex-1 overflow-y-auto px-4 lg:px-8 py-4">
               <div className="mb-4">
-                <div className="flex items-center gap-2 lg:gap-3 mb-2">
-                  <div className="w-1 h-5 lg:h-6 bg-gradient-to-b from-primary to-accent rounded-full" />
-                  <h2 className="font-display text-xl lg:text-2xl font-bold text-foreground capitalize">
-                    {steps.find(s => s.id === activeStep)?.label || 'Select'}
-                  </h2>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2 lg:gap-3">
+                    <div className="w-1 h-5 lg:h-6 bg-gradient-to-b from-primary to-accent rounded-full" />
+                    <h2 className="font-display text-xl lg:text-2xl font-bold text-foreground capitalize">
+                      {steps.find(s => s.id === activeStep)?.label || 'Select'}
+                    </h2>
+                  </div>
+                  {(product?.category === 'shirt') && (
+                    <Link
+                      to="/customize-3d/shirt"
+                      className="px-3 py-1.5 rounded-lg text-xs font-medium bg-muted text-foreground hover:bg-muted/80 transition-all border border-border/50"
+                    >
+                      Switch to 3D
+                    </Link>
+                  )}
                 </div>
                 <p className="text-xs lg:text-sm text-muted-foreground ml-3 lg:ml-4">
                   {activeStep === 'fabric' && 'Choose from our premium fabric collection'}

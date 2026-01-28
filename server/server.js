@@ -10,6 +10,7 @@ import productRoutes from './routes/products.js';
 import orderRoutes from './routes/orders.js';
 import customerRoutes from './routes/customers.js';
 import adminRoutes from './routes/admin.js';
+import fabricRoutes from './routes/fabrics.js';
 
 import errorHandler from './middleware/errorHandler.js';
 
@@ -29,6 +30,7 @@ const allowedOrigins = [
   "http://localhost:3001",
   "http://localhost:8080",
   "http://localhost:5174",
+  "http://localhost:5175",
 ];
 
 // Configure CORS to allow frontend access
@@ -55,7 +57,7 @@ const storage = multer.diskStorage({
     cb(null, uploadDir);
   },
   filename: function (req, file, cb) {
-    // Unique filename to prevent overwrites
+    // Unique filename to prevent overwrites and collisions
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
     const ext = path.extname(file.originalname);
     cb(null, uniqueSuffix + ext);
@@ -93,6 +95,7 @@ app.use('/api/products', productRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/customers', customerRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/fabrics', fabricRoutes);
 
 app.get('/api/data', (req, res) => {
   fs.readFile(DB_PATH, 'utf8', (err, data) => {
