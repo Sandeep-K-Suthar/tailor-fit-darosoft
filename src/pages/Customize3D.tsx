@@ -8,7 +8,7 @@ import { fetchFabrics, getTextureUrl } from '@/services/fabricService';
 import { FABRIC_CATEGORIES } from '@/types/fabric';
 import { useCart } from '@/context/CartContext';
 import { useCustomerAuth } from '@/context/CustomerAuthContext';
-import { ArrowLeft, Check, Scissors, ShoppingBag, Loader2, Sparkles, User, Bookmark, Box, LogOut, Save, ZoomIn, ZoomOut, Shirt } from 'lucide-react';
+import { ArrowLeft, Check, Scissors, ShoppingBag, Loader2, Sparkles, User, Bookmark, Box, LogOut, Save, ZoomIn, ZoomOut, Shirt, Layers, Minus, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 // Camera Controller - handles smooth zoom animation
@@ -153,8 +153,25 @@ export default function Customize3D() {
     const [showSavedDesigns, setShowSavedDesigns] = useState(false);
     const [showCartDrawer, setShowCartDrawer] = useState(false);
 
-    const { addToCart, itemCount, items, totalAmount } = useCart();
-    const { customer, isAuthenticated, logout } = useCustomerAuth();
+    const { addToCart, itemCount, items, totalAmount, updateQuantity, removeFromCart } = useCart();
+    const { customer, isAuthenticated, logout, saveDesign } = useCustomerAuth();
+
+    // Responsive zoom - adjust based on screen size
+    useEffect(() => {
+        const handleResize = () => {
+            const width = window.innerWidth;
+            if (width < 640) {
+                setZoom(4.5); // Mobile - zoom out more
+            } else if (width < 1024) {
+                setZoom(4); // Tablet
+            } else {
+                setZoom(3.5); // Desktop
+            }
+        };
+        handleResize();
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     // Load fabrics
     useEffect(() => {
@@ -187,10 +204,37 @@ export default function Customize3D() {
     const handleZoomIn = () => setZoom(z => Math.max(2, z - 0.5));
     const handleZoomOut = () => setZoom(z => Math.min(6, z + 0.5));
 
-    const handleSaveDesign = () => {
-        setSaved(true);
-        toast.success('Design saved!');
-        setTimeout(() => setSaved(false), 2000);
+    const handleSaveDesign = async () => {
+        if (!selectedFabric) {
+            toast.error('Please select a fabric first');
+            return;
+        }
+
+        if (!isAuthenticated) {
+            toast.error('Please login to save designs');
+            navigate('/auth');
+            return;
+        }
+
+        // Save to account via CustomerAuthContext
+        const result = await saveDesign({
+            productId: productId,
+            productName: `Custom ${validProductType} (3D)`,
+            productCategory: validProductType,
+            baseImage: getTextureUrl(selectedFabric.colorMapUrl) || '',
+            fabric: { id: selectedFabric._id, name: selectedFabric.name, image: getTextureUrl(selectedFabric.colorMapUrl) || '' },
+            styles: { viewMode },
+            measurements: {},
+            totalPrice: selectedFabric.price,
+        });
+
+        if (result.success) {
+            setSaved(true);
+            toast.success(result.message);
+            setTimeout(() => setSaved(false), 2000);
+        } else {
+            toast.error(result.message);
+        }
     };
 
     const handleAddToCart = () => {
@@ -258,6 +302,11 @@ export default function Customize3D() {
                         <div className="flex items-center gap-2 sm:gap-3 z-10">
                             <button onClick={() => setShowSavedDesigns(!showSavedDesigns)} className="relative p-2.5 rounded-xl bg-white/10 text-white hover:bg-white/20 transition-all duration-300">
                                 <Bookmark className="w-5 h-5" />
+                                {(customer?.savedDesigns?.length || 0) > 0 && (
+                                    <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-accent text-primary text-xs font-bold flex items-center justify-center">
+                                        {customer?.savedDesigns?.length}
+                                    </span>
+                                )}
                             </button>
                             <button onClick={() => setShowCartDrawer(!showCartDrawer)} className="relative p-2.5 rounded-xl bg-white/10 text-white hover:bg-white/20 transition-all duration-300">
                                 <ShoppingBag className="w-5 h-5" />
@@ -322,7 +371,7 @@ export default function Customize3D() {
 
                     {/* Preview - Full height matching 2D page */}
                     <div className="flex-1 flex flex-col px-4 lg:px-8 pt-14 pb-4 overflow-hidden">
-                        <div className="flex-1 relative rounded-xl bg-white/40 border border-white/40 shadow-soft overflow-hidden">
+                        <div className="flex-1 relative rounded-xl bg-primary/10 border border-primary/20 shadow-soft overflow-hidden">
                             {/* Grid */}
                             <div className="absolute inset-0 opacity-30" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, rgb(0 0 0 / 0.05) 1px, transparent 0)', backgroundSize: '24px 24px' }} />
 
@@ -488,6 +537,163 @@ export default function Customize3D() {
                             </button>
                         </div>
                     </div>
+                </div>
+            </div>
+
+            {/* Saved Designs Drawer */}
+            <div
+                className={`fixed inset-0 z-[100] transition-opacity duration-300 ${showSavedDesigns ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
+                onClick={() => setShowSavedDesigns(false)}
+            >
+                <div className="fixed inset-0 bg-black/50" />
+                <div
+                    className={`absolute right-0 top-[68px] bottom-0 w-full sm:w-96 max-w-[95vw] sm:max-w-[90vw] bg-white shadow-float overflow-y-auto transition-transform duration-300 ease-out ${showSavedDesigns ? 'translate-x-0' : 'translate-x-full'}`}
+                    onClick={(e) => e.stopPropagation()}
+                >
+                    <div className="sticky top-0 bg-white border-b border-border/50 p-4 z-10">
+                        <h3 className="font-display text-lg font-semibold flex items-center gap-2">
+                            <Bookmark className="w-5 h-5 text-primary" />
+                            Saved Designs
+                        </h3>
+                        <p className="text-xs text-muted-foreground mt-1">{customer?.savedDesigns?.length || 0} saved design{(customer?.savedDesigns?.length || 0) !== 1 ? 's' : ''}</p>
+                    </div>
+                    <div className="p-4">
+                        {(!customer?.savedDesigns || customer.savedDesigns.length === 0) ? (
+                            <div className="text-center py-8">
+                                <Bookmark className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
+                                <p className="text-sm text-muted-foreground">No saved designs yet.</p>
+                                <p className="text-xs text-muted-foreground mt-1">Save your current configuration to see it here.</p>
+                            </div>
+                        ) : (
+                            <div className="space-y-3">
+                                {customer.savedDesigns.map((design) => (
+                                    <div key={design._id} className="p-3 rounded-xl border border-border/50 bg-muted/30 hover:border-primary/30 transition-all">
+                                        <div className="flex gap-3">
+                                            <div className="w-16 h-16 rounded-lg bg-white border border-border/30 overflow-hidden shrink-0">
+                                                {design.baseImage ? (
+                                                    <img src={design.baseImage} alt={design.productName} className="w-full h-full object-contain p-1" />
+                                                ) : (
+                                                    <div className="w-full h-full flex items-center justify-center">
+                                                        <Layers className="w-6 h-6 text-muted-foreground/30" />
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="font-medium text-sm text-foreground truncate">{design.name || design.productName}</p>
+                                                <p className="text-xs text-muted-foreground mt-0.5">
+                                                    {new Date(design.savedAt).toLocaleDateString()}
+                                                </p>
+                                                <p className="text-sm font-semibold text-primary mt-1">{formatPrice(design.totalPrice)}</p>
+                                            </div>
+                                        </div>
+                                        {design.fabric && (
+                                            <p className="text-xs text-muted-foreground mt-2 truncate">
+                                                Fabric: {design.fabric.name}
+                                            </p>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+
+            {/* Cart Drawer */}
+            <div
+                className={`fixed inset-0 z-[100] transition-opacity duration-300 ${showCartDrawer ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
+                onClick={() => setShowCartDrawer(false)}
+            >
+                <div className="fixed inset-0 bg-black/50" />
+                <div
+                    className={`absolute right-0 top-[68px] bottom-0 w-full sm:w-96 max-w-[95vw] sm:max-w-[90vw] bg-white shadow-float overflow-y-auto transition-transform duration-300 ease-out ${showCartDrawer ? 'translate-x-0' : 'translate-x-full'}`}
+                    onClick={(e) => e.stopPropagation()}
+                >
+                    <div className="sticky top-0 bg-white border-b border-border/50 p-4 z-10">
+                        <h3 className="font-display text-lg font-semibold flex items-center gap-2">
+                            <ShoppingBag className="w-5 h-5 text-primary" />
+                            Shopping Cart
+                        </h3>
+                        <p className="text-xs text-muted-foreground mt-1">{itemCount} item{itemCount !== 1 ? 's' : ''}</p>
+                    </div>
+                    <div className="p-4 flex-1">
+                        {items.length === 0 ? (
+                            <div className="text-center py-8">
+                                <ShoppingBag className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
+                                <p className="text-sm text-muted-foreground">Your cart is empty</p>
+                                <p className="text-xs text-muted-foreground mt-1">Add items to get started</p>
+                            </div>
+                        ) : (
+                            <div className="space-y-3">
+                                {items.map((item) => (
+                                    <div key={item.id} className="p-3 rounded-xl border border-border/50 bg-muted/30">
+                                        <div className="flex gap-3">
+                                            <div className="w-14 h-14 rounded-lg bg-white border border-border/30 overflow-hidden shrink-0">
+                                                {item.baseImage ? (
+                                                    <img src={item.baseImage} alt={item.productName} className="w-full h-full object-contain p-1" />
+                                                ) : (
+                                                    <div className="w-full h-full flex items-center justify-center">
+                                                        <Layers className="w-5 h-5 text-muted-foreground/30" />
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="font-medium text-sm text-foreground truncate">{item.productName}</p>
+                                                <p className="text-xs text-muted-foreground capitalize">{item.productCategory}</p>
+                                                <p className="text-sm font-semibold text-primary mt-1">{formatPrice(item.totalPrice)}</p>
+                                            </div>
+                                        </div>
+                                        {/* Quantity Controls */}
+                                        <div className="flex items-center justify-between mt-3">
+                                            <div className="flex items-center gap-2">
+                                                <button
+                                                    onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                                                    className="w-7 h-7 rounded-lg bg-muted flex items-center justify-center hover:bg-muted/70 transition-colors"
+                                                >
+                                                    <Minus className="w-3 h-3" />
+                                                </button>
+                                                <span className="text-sm font-medium w-6 text-center">{item.quantity}</span>
+                                                <button
+                                                    onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                                                    className="w-7 h-7 rounded-lg bg-muted flex items-center justify-center hover:bg-muted/70 transition-colors"
+                                                >
+                                                    <Plus className="w-3 h-3" />
+                                                </button>
+                                            </div>
+                                            <button
+                                                onClick={() => removeFromCart(item.id)}
+                                                className="p-2 text-muted-foreground hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                    {items.length > 0 && (
+                        <div className="sticky bottom-0 bg-white border-t border-border/50 p-4">
+                            <div className="flex justify-between mb-4">
+                                <span className="text-sm text-muted-foreground">Subtotal</span>
+                                <span className="font-display text-lg font-bold">{formatPrice(totalAmount)}</span>
+                            </div>
+                            <Link
+                                to="/checkout"
+                                onClick={() => setShowCartDrawer(false)}
+                                className="block w-full py-3 bg-primary text-white text-center font-semibold rounded-full hover:bg-primary/90 transition-colors"
+                            >
+                                Proceed to Checkout
+                            </Link>
+                            <Link
+                                to="/cart"
+                                onClick={() => setShowCartDrawer(false)}
+                                className="block w-full py-2 mt-2 text-center text-sm text-muted-foreground hover:text-foreground transition-colors"
+                            >
+                                View Full Cart
+                            </Link>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

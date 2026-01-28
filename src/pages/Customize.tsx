@@ -966,7 +966,7 @@ export default function CustomizePage() {
           <div className="flex flex-row h-[55vh] min-h-[350px] max-h-[500px] min-[450px]:h-[65vh] min-[450px]:min-h-[500px] min-[450px]:max-h-[800px] min-[900px]:h-[75vh] min-[900px]:min-h-[600px] min-[900px]:max-h-[900px]">
             {/* Preview Section - Mobile */}
             <div className="flex-1 relative overflow-hidden p-3 min-[450px]:p-4 flex flex-col">
-              <div className="flex-1 relative rounded-xl bg-white/40 border border-white/40 shadow-soft overflow-hidden">
+              <div className="flex-1 relative rounded-xl bg-primary/10 border border-primary/20 shadow-soft overflow-hidden">
                 {/* Grid Pattern */}
                 <div className="absolute inset-0 opacity-30" style={{
                   backgroundImage: 'radial-gradient(circle at 1px 1px, rgb(0 0 0 / 0.05) 1px, transparent 0)',
@@ -1293,7 +1293,7 @@ export default function CustomizePage() {
 
           <div className="flex-1 flex flex-col px-4 lg:px-8 pt-16 pb-0 lg:pb-0 overflow-hidden">
             {/* Preview Area */}
-            <div className="flex-1 relative rounded-xl bg-white/40 border border-white/40 shadow-soft overflow-hidden mb-4 min-h-[400px] lg:min-h-0">
+            <div className="flex-1 relative rounded-xl bg-primary/10 border border-primary/20 shadow-soft overflow-hidden mb-4 min-h-[400px] lg:min-h-0">
               {/* Grid Pattern */}
               <div className="absolute inset-0 opacity-30" style={{
                 backgroundImage: 'radial-gradient(circle at 1px 1px, rgb(0 0 0 / 0.05) 1px, transparent 0)',
