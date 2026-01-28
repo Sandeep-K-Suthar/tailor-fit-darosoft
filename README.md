@@ -73,11 +73,35 @@ This document maintains a record of the development phases, architectural decisi
 - **UX Refinements:** Added toast notifications (Sonner) for user feedback.
 - **Documentation:** Finalized `README.md` and project structure reviews.
 
+# Phase 9: 3D Customizer Engine
+*(28/01/2026: 3D Preview Feature)*
+- **Core Feature:** Built real-time 3D shirt customization using Three.js and React Three Fiber.
+- Implemented `Customize3D.tsx` page with:
+    - GLB model loading via `useGLTF` hook
+    - Dynamic fabric texture application (color map, normal map, roughness map)
+    - Smooth front/back view rotation toggle
+    - Zoom controls with +/- buttons and smooth camera animation
+- **Texture System:** Added fabric texture loading with proper sRGB color space for accurate colors.
+- Created backend API for 3D fabrics:
+    - `GET /api/fabrics` - List all fabrics with texture URLs
+    - `POST /api/fabrics` - Add new fabric with texture maps
+    - Fabric seeder utility for sample data
+- **Navigation:** Added seamless switch between 2D and 3D customizers.
+- **Layout:** Matched 3D page design with existing 2D customizer (step sidebar, price summary, save/cart buttons).
+- Files added:
+    - `src/pages/Customize3D.tsx` - Main 3D customizer page
+    - `src/services/fabricService.ts` - API calls for fabric data
+    - `src/types/fabric.ts` - TypeScript types for 3D fabrics
+    - `server/routes/fabrics.js` - Express API routes
+    - `server/utils/fabricSeeder.js` - Database seeder for fabrics
+
 
 
 # System Artifacts
 - **Database:** MongoDB (Production-ready schemas)
 - **Assets:** Organized in `public/` (Fabric patterns, component layers)
+- **3D Models:** GLB format stored in `public/models/`
+- **Fabric Textures:** Stored in `server/public/uploads/textures/` (color, normal, roughness maps)
 - **API:** RESTful architecture with secure headers
 
 *Maintained and Developed by Sandeep for Darosoft*
