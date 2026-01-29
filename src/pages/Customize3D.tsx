@@ -1,7 +1,7 @@
 import { useState, useEffect, Suspense, useRef, useMemo } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { OrbitControls, Environment, useGLTF, useTexture } from '@react-three/drei';
+import { OrbitControls, Environment, useGLTF, useTexture, ContactShadows } from '@react-three/drei';
 import * as THREE from 'three';
 import type { Fabric3D, FabricCategory } from '@/types/fabric';
 import { fetchFabrics, getTextureUrl } from '@/services/fabricService';
@@ -375,12 +375,38 @@ export default function Customize3D() {
                             {/* Grid */}
                             <div className="absolute inset-0 opacity-30" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, rgb(0 0 0 / 0.05) 1px, transparent 0)', backgroundSize: '24px 24px' }} />
 
-                            <Canvas camera={{ position: [0, 0, 3.5], fov: 45 }} style={{ height: '100%', width: '100%' }} gl={{ preserveDrawingBuffer: true, antialias: true }} shadows>
+                            <Canvas camera={{ position: [0, 0, 3.5], fov: 45 }} style={{ height: '100%', width: '100%' }} gl={{ preserveDrawingBuffer: true, antialias: true, toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 1.2 }} shadows>
                                 <CameraController zoom={zoom} />
                                 <Suspense fallback={null}>
-                                    <Environment preset="studio" />
-                                    <ambientLight intensity={0.5} />
-                                    <directionalLight position={[5, 5, 5]} intensity={0.7} castShadow />
+                                    {/* HDRI Environment for realistic reflections */}
+                                    <Environment files="/hdri/marry_hall_2k.hdr" background={false} />
+
+                                    {/* Studio Lighting Setup */}
+                                    <ambientLight intensity={0.3} />
+
+                                    {/* Key Light - main illumination from front-right */}
+                                    <directionalLight
+                                        position={[5, 5, 5]}
+                                        intensity={1.2}
+                                        castShadow
+                                        shadow-mapSize={[2048, 2048]}
+                                        shadow-camera-far={50}
+                                        shadow-camera-left={-10}
+                                        shadow-camera-right={10}
+                                        shadow-camera-top={10}
+                                        shadow-camera-bottom={-10}
+                                        shadow-bias={-0.0001}
+                                    />
+
+                                    {/* Fill Light - soften shadows from left */}
+                                    <directionalLight position={[-5, 3, 0]} intensity={0.5} />
+
+                                    {/* Rim Light - edge definition from behind */}
+                                    <directionalLight position={[0, 3, -5]} intensity={0.4} />
+
+                                    {/* Bottom Fill - subtle illumination from below */}
+                                    <directionalLight position={[0, -2, 2]} intensity={0.2} />
+
                                     <Model3D
                                         modelPath={modelPath}
                                         colorMapUrl={selectedFabric ? getTextureUrl(selectedFabric.colorMapUrl) : undefined}
@@ -391,6 +417,16 @@ export default function Customize3D() {
                                         metalness={selectedFabric?.metalness ?? 0}
                                         normalScale={selectedFabric?.normalScale ?? 1}
                                         viewAngle={viewMode}
+                                    />
+
+                                    {/* Contact Shadow - realistic ground shadow */}
+                                    <ContactShadows
+                                        position={[0, -4, 0]}
+                                        opacity={0.5}
+                                        scale={12}
+                                        blur={2.5}
+                                        far={5}
+                                        color="#000000"
                                     />
                                 </Suspense>
                                 <OrbitControls enablePan={false} enableZoom={false} enableRotate={true} minPolarAngle={Math.PI / 2} maxPolarAngle={Math.PI / 2} makeDefault />
