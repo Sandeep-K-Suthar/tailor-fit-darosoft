@@ -164,30 +164,91 @@ export function ShirtProvider({ children }: { children: React.ReactNode }) {
       );
 
       // Set default fabric and styles
+
+      // ... previous logic determining defaultFabric and defaultStyles ...
       const defaultFabric = mappedFabrics.find((f: any) => f.isDefault) || mappedFabrics[0] || null;
+
+      // Prepare initial state values
+      let initialFabric = defaultFabric;
+      let initialFabricColor = defaultFabric?.colors?.[0] || '#FFFFFF';
+      let initialStylesState = { ...defaultStyles };
+      let initialActiveStep = 'fabric';
+      let initialViewMode: 'front' | 'back' = 'front';
+
+      // Try to load from localStorage
+      const storageKey = `shirt_customization_${productData._id}`;
+      console.log('ShirtContext: Loading product:', productData._id);
+      console.log('ShirtContext: Using storage key:', storageKey);
+
+      try {
+        const savedStateJson = localStorage.getItem(storageKey);
+        console.log('ShirtContext: Saved state found:', !!savedStateJson);
+        if (savedStateJson) {
+          const savedState = JSON.parse(savedStateJson);
+
+          // Helper to find fresh object by ID
+          const findFabric = (id: string) => mappedFabrics.find(f => f.id === id);
+          const findStyle = (cat: string, id: string) => mappedStyles[cat]?.find(o => o.id === id);
+
+          // Restore Fabric
+          if (savedState.fabricId) {
+            const found = findFabric(savedState.fabricId);
+            if (found) {
+              initialFabric = found;
+              // If saved color exists and is valid for this fabric, use it
+              if (savedState.fabricColor && found.colors?.includes(savedState.fabricColor)) {
+                initialFabricColor = savedState.fabricColor;
+              } else {
+                initialFabricColor = found.colors?.[0] || '#FFFFFF';
+              }
+            }
+          }
+
+          // Restore Styles
+          if (savedState.styles) {
+            Object.entries(savedState.styles).forEach(([cat, id]) => {
+              const found = findStyle(cat, id as string);
+              if (found) {
+                initialStylesState[cat] = found;
+              }
+            });
+          }
+
+          // Restore View State
+          if (savedState.activeStep) initialActiveStep = savedState.activeStep;
+          if (savedState.viewMode) initialViewMode = savedState.viewMode;
+        }
+      } catch (e) {
+        console.warn("Failed to restore customization state", e);
+      }
 
       if (productData.category !== 'shirt') {
         setConfig((prev) => ({
           ...prev,
-          fabric: defaultFabric,
-          styles: defaultStyles,
+          fabric: initialFabric,
+          styles: initialStylesState,
         }));
       } else if (optionGroups.length > 0) {
         setConfig((prev) => ({
           ...prev,
-          fabric: defaultFabric || prev.fabric,
-          collar: defaultStyles.collar || prev.collar,
-          cuff: defaultStyles.cuff || prev.cuff,
-          pocket: defaultStyles.pocket || prev.pocket,
-          button: defaultStyles.button || prev.button,
-          sleeve: defaultStyles.sleeve || prev.sleeve,
-          placket: defaultStyles.placket || prev.placket,
-          back: defaultStyles.back || prev.back,
-          necktie: defaultStyles.necktie || prev.necktie,
-          bowtie: defaultStyles.bowtie || prev.bowtie,
-          styles: defaultStyles,
+          fabric: initialFabric || prev.fabric,
+          fabricColor: initialFabricColor,
+          collar: initialStylesState.collar || prev.collar,
+          cuff: initialStylesState.cuff || prev.cuff,
+          pocket: initialStylesState.pocket || prev.pocket,
+          button: initialStylesState.button || prev.button,
+          sleeve: initialStylesState.sleeve || prev.sleeve,
+          placket: initialStylesState.placket || prev.placket,
+          back: initialStylesState.back || prev.back,
+          necktie: initialStylesState.necktie || prev.necktie,
+          bowtie: initialStylesState.bowtie || prev.bowtie,
+          styles: initialStylesState,
         }));
       }
+
+      // Set UI State
+      setActiveStep(initialActiveStep);
+      setViewMode(initialViewMode);
 
       // Ensure productFabrics is set
       setProductFabrics(mappedFabrics);
@@ -195,6 +256,25 @@ export function ShirtProvider({ children }: { children: React.ReactNode }) {
       console.error('Failed to load product', error);
     }
   }, []);
+
+  // Save state to localStorage whenever it changes
+  useEffect(() => {
+    if (!product?._id) return;
+
+    const stateToSave = {
+      fabricId: config.fabric?.id,
+      fabricColor: config.fabricColor,
+      styles: Object.entries(config.styles).reduce((acc, [key, val]) => {
+        if (val?.id) acc[key] = val.id;
+        return acc;
+      }, {} as Record<string, string>),
+      activeStep,
+      viewMode
+    };
+
+    localStorage.setItem(`shirt_customization_${product._id}`, JSON.stringify(stateToSave));
+    console.log('ShirtContext: Saved state to localStorage for:', product._id);
+  }, [product?._id, config.fabric, config.fabricColor, config.styles, activeStep, viewMode]);
 
   useEffect(() => {
     fetch('/api/data')

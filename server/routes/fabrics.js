@@ -88,23 +88,44 @@ router.get('/:id', async (req, res) => {
     }
 });
 
-// POST new fabric with texture upload
-router.post('/', upload.single('texture'), async (req, res) => {
+// POST new fabric - accepts JSON with pre-uploaded texture paths
+router.post('/', async (req, res) => {
     try {
-        const { name, category, hexColor, price, roughness, metalness } = req.body;
+        const {
+            name,
+            category,
+            colorMapUrl,
+            normalMapUrl,
+            roughnessMapUrl,
+            baseColor,
+            price,
+            roughness,
+            metalness,
+            normalScale
+        } = req.body;
 
-        if (!req.file) {
-            return res.status(400).json({ success: false, error: 'Texture image is required' });
+        // Validate required fields
+        if (!name || !name.trim()) {
+            return res.status(400).json({ success: false, error: 'Fabric name is required' });
+        }
+        if (!colorMapUrl) {
+            return res.status(400).json({ success: false, error: 'Color map texture is required' });
+        }
+        if (!category) {
+            return res.status(400).json({ success: false, error: 'Category is required' });
         }
 
         const fabricData = {
-            name,
+            name: name.trim(),
             category,
-            textureUrl: `/uploads/textures/${req.file.filename}`,
-            hexColor: hexColor || '#FFFFFF',
-            price: Number(price),
-            roughness: roughness ? Number(roughness) : 0.8,
-            metalness: metalness ? Number(metalness) : 0.1
+            colorMapUrl,
+            normalMapUrl: normalMapUrl || null,
+            roughnessMapUrl: roughnessMapUrl || null,
+            baseColor: baseColor || '#FFFFFF',
+            price: Number(price) || 0,
+            roughness: roughness !== undefined ? Number(roughness) : 0.8,
+            metalness: metalness !== undefined ? Number(metalness) : 0.0,
+            normalScale: normalScale !== undefined ? Number(normalScale) : 1.0
         };
 
         const fabric = new Fabric(fabricData);
@@ -113,38 +134,40 @@ router.post('/', upload.single('texture'), async (req, res) => {
         res.status(201).json({ success: true, data: savedFabric });
     } catch (error) {
         console.error('Error creating fabric:', error);
-        // Clean up uploaded file if there was an error
-        if (req.file) {
-            fs.unlink(path.join(texturesDir, req.file.filename), () => { });
-        }
         res.status(400).json({ success: false, error: error.message });
     }
 });
 
 // PUT update fabric
-router.put('/:id', upload.single('texture'), async (req, res) => {
+router.put('/:id', async (req, res) => {
     try {
-        const { name, category, hexColor, price, roughness, metalness, isActive } = req.body;
+        const {
+            name,
+            category,
+            colorMapUrl,
+            normalMapUrl,
+            roughnessMapUrl,
+            baseColor,
+            price,
+            roughness,
+            metalness,
+            normalScale,
+            isActive
+        } = req.body;
+
         const updateData = {};
 
-        if (name) updateData.name = name;
+        if (name) updateData.name = name.trim();
         if (category) updateData.category = category;
-        if (hexColor) updateData.hexColor = hexColor;
+        if (colorMapUrl) updateData.colorMapUrl = colorMapUrl;
+        if (normalMapUrl !== undefined) updateData.normalMapUrl = normalMapUrl || null;
+        if (roughnessMapUrl !== undefined) updateData.roughnessMapUrl = roughnessMapUrl || null;
+        if (baseColor) updateData.baseColor = baseColor;
         if (price !== undefined) updateData.price = Number(price);
         if (roughness !== undefined) updateData.roughness = Number(roughness);
         if (metalness !== undefined) updateData.metalness = Number(metalness);
-        if (isActive !== undefined) updateData.isActive = isActive === 'true' || isActive === true;
-
-        if (req.file) {
-            updateData.textureUrl = `/uploads/textures/${req.file.filename}`;
-
-            // Delete old texture file
-            const oldFabric = await Fabric.findById(req.params.id);
-            if (oldFabric && oldFabric.textureUrl) {
-                const oldPath = path.join(__dirname, '..', 'public', oldFabric.textureUrl);
-                fs.unlink(oldPath, () => { });
-            }
-        }
+        if (normalScale !== undefined) updateData.normalScale = Number(normalScale);
+        if (isActive !== undefined) updateData.isActive = isActive;
 
         const fabric = await Fabric.findByIdAndUpdate(
             req.params.id,
@@ -172,11 +195,14 @@ router.delete('/:id', async (req, res) => {
             return res.status(404).json({ success: false, error: 'Fabric not found' });
         }
 
-        // Delete texture file
-        if (fabric.textureUrl) {
-            const texturePath = path.join(__dirname, '..', 'public', fabric.textureUrl);
-            fs.unlink(texturePath, () => { });
-        }
+        // Delete texture files
+        const mapsToDelete = [fabric.textureUrl, fabric.colorMapUrl, fabric.normalMapUrl, fabric.roughnessMapUrl];
+        mapsToDelete.forEach(url => {
+            if (url) {
+                const texturePath = path.join(__dirname, '..', 'public', url);
+                fs.unlink(texturePath, () => { });
+            }
+        });
 
         res.json({ success: true, message: 'Fabric deleted successfully' });
     } catch (error) {

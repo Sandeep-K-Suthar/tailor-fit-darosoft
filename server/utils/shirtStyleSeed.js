@@ -1,22 +1,5 @@
-/**
- * Shirt Style Customization Seed Data
- * Uses the shirt-style-customization assets with fabric-color-specific images
- * 
- * Folder structure:
- * /customization/shirt-style/
- * ├── Front/
- * │   ├── Collar/{color}/       - 6 collar styles per color
- * │   ├── Sleeves/{color}/      - 2 sleeve styles per color
- * │   ├── Cuffs/{color}/        - 5 cuff styles per color
- * │   ├── Buttons/              - 4 button colors
- * │   ├── Chestpocket/{color}/  - 1 pocket style per color
- * │   ├── Necktie/              - 3 tie styles
- * │   └── Bowtie/               - 3 bowtie styles
- * ├── Back/{color}/             - 2 images (long/short) per color
- * └── Fabric/{color}/           - 1 swatch per color
- */
 
-const BASE_PATH = '/customization/shirt-style';
+const BASE_PATH = '/shirt-style-customization';
 
 // Fabric color IDs
 const FABRIC_COLORS = ['white', 'champagne', 'cobalt-blue', 'deep-blue', 'light-blue'];

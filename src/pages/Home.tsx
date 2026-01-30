@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { SiteLayout } from '@/components/layout/SiteLayout';
-import { ArrowRight, Sparkles, Ruler, Palette, Clock, Shield, ChevronRight, ChevronLeft } from 'lucide-react';
+import { ArrowRight, Sparkles, Ruler, Palette, Clock, Shield, ChevronRight, ChevronLeft, Box, RotateCcw, ZoomIn } from 'lucide-react';
 import { getProducts } from '@/services/products';
 import { Product } from '@/types/product';
 
@@ -70,21 +70,21 @@ export default function HomePage() {
                   <span className="block text-gradient-gold">Perfection</span>
                 </h1>
                 <p className="text-lg text-muted-foreground max-w-lg mx-auto lg:mx-0 leading-relaxed">
-                  Experience the art of bespoke tailoring. Design custom suits, shirts, and trousers 
+                  Experience the art of bespoke tailoring. Design custom suits, shirts, and trousers
                   crafted exclusively for you.
                 </p>
               </div>
 
               {/* CTA */}
               <div className="flex flex-wrap gap-4 justify-center lg:justify-start">
-                <Link 
+                <Link
                   to="/products"
                   className="group inline-flex items-center gap-2 px-8 py-4 bg-primary text-white rounded-full font-semibold shadow-elevated hover:shadow-float transition-all duration-500 hover:-translate-y-1"
                 >
                   Start Designing
                   <ArrowRight className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" />
                 </Link>
-                <Link 
+                <Link
                   to="/products"
                   className="inline-flex items-center gap-2 px-8 py-4 bg-white border-2 border-border rounded-full font-semibold text-foreground hover:border-primary/30 hover:bg-primary/5 transition-all duration-300"
                 >
@@ -117,30 +117,29 @@ export default function HomePage() {
                       {products.map((product, index) => (
                         <div
                           key={product._id}
-                          className={`absolute inset-0 transition-all duration-700 ${
-                            index === currentSlide 
-                              ? 'opacity-100 translate-x-0' 
-                              : index < currentSlide 
-                                ? 'opacity-0 -translate-x-full'
-                                : 'opacity-0 translate-x-full'
-                          }`}
+                          className={`absolute inset-0 transition-all duration-700 ${index === currentSlide
+                            ? 'opacity-100 translate-x-0'
+                            : index < currentSlide
+                              ? 'opacity-0 -translate-x-full'
+                              : 'opacity-0 translate-x-full'
+                            }`}
                         >
-                          <img 
+                          <img
                             src={product.images?.baseImage || `/images/placeholders/${product.category}.svg`}
                             alt={product.name}
                             className="w-full h-full object-contain p-8"
                           />
                         </div>
                       ))}
-                      
+
                       {/* Navigation Arrows */}
-                      <button 
+                      <button
                         onClick={prevSlide}
                         className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 shadow-soft flex items-center justify-center hover:bg-white transition-all"
                       >
                         <ChevronLeft className="w-5 h-5 text-foreground" />
                       </button>
-                      <button 
+                      <button
                         onClick={nextSlide}
                         className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 shadow-soft flex items-center justify-center hover:bg-white transition-all"
                       >
@@ -153,9 +152,8 @@ export default function HomePage() {
                           <button
                             key={index}
                             onClick={() => setCurrentSlide(index)}
-                            className={`w-2 h-2 rounded-full transition-all duration-300 ${
-                              index === currentSlide ? 'w-6 bg-primary' : 'bg-primary/30'
-                            }`}
+                            className={`w-2 h-2 rounded-full transition-all duration-300 ${index === currentSlide ? 'w-6 bg-primary' : 'bg-primary/30'
+                              }`}
                           />
                         ))}
                       </div>
@@ -195,7 +193,7 @@ export default function HomePage() {
 
                 {/* CTA */}
                 {currentProduct ? (
-                  <Link 
+                  <Link
                     to={`/products/${currentProduct._id}`}
                     className="mt-4 flex items-center justify-center gap-2 w-full py-3 bg-primary text-white rounded-xl font-semibold hover:bg-primary/90 transition-all"
                   >
@@ -225,7 +223,7 @@ export default function HomePage() {
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {features.map((feature) => (
-              <div 
+              <div
                 key={feature.title}
                 className="group p-6 bg-white rounded-2xl border border-border/50 hover:shadow-elevated hover:-translate-y-1 transition-all duration-500"
               >
@@ -240,8 +238,108 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Categories Section */}
+      {/* 3D Customization Showcase */}
       <section className="py-20 bg-white">
+        <div className="container mx-auto px-4 lg:px-8">
+          <div className="grid lg:grid-cols-2 gap-12 items-center">
+            {/* Left - Content */}
+            <div className="space-y-8">
+              <div>
+                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 mb-4">
+                  <Box className="w-4 h-4 text-primary" />
+                  <span className="text-sm font-semibold text-primary">New Feature</span>
+                </div>
+                <h2 className="font-display text-4xl lg:text-5xl font-semibold text-foreground mb-4">
+                  Experience
+                  <span className="text-gradient-gold"> 3D Customization</span>
+                </h2>
+                <p className="text-lg text-muted-foreground leading-relaxed">
+                  Visualize your custom clothing in stunning 3D before ordering. Rotate, zoom, and see every detail with realistic fabric textures.
+                </p>
+              </div>
+
+              {/* Features */}
+              <div className="grid grid-cols-2 gap-4">
+                {[
+                  { icon: RotateCcw, label: '360° Rotation', desc: 'View from any angle' },
+                  { icon: ZoomIn, label: 'Zoom Detail', desc: 'See fabric texture up close' },
+                  { icon: Palette, label: '12+ Fabrics', desc: 'Premium PBR textures' },
+                  { icon: Sparkles, label: 'Realistic', desc: 'Lighting & shadows' },
+                ].map((feat) => (
+                  <div key={feat.label} className="flex items-start gap-3 p-4 rounded-2xl bg-muted/30 border border-border/50">
+                    <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+                      <feat.icon className="w-5 h-5 text-primary" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-foreground text-sm">{feat.label}</p>
+                      <p className="text-xs text-muted-foreground">{feat.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* CTA */}
+              <Link
+                to="/customize-3d/shirt"
+                className="group inline-flex items-center gap-3 px-8 py-4 bg-primary text-white rounded-full font-semibold shadow-elevated hover:shadow-float transition-all duration-500 hover:-translate-y-1"
+              >
+                <Box className="w-5 h-5" />
+                Try 3D Customizer
+                <ArrowRight className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" />
+              </Link>
+            </div>
+
+            {/* Right - 3D Preview Card */}
+            <div className="relative">
+              <div className="relative rounded-3xl overflow-hidden bg-gradient-to-br from-primary/5 to-accent/5 border border-border/50 shadow-float p-8">
+                {/* Preview Image Area */}
+                <div className="aspect-square rounded-2xl bg-gradient-to-br from-muted/50 to-muted/30 flex items-center justify-center relative overflow-hidden">
+                  <div className="text-center space-y-4">
+                    <div className="w-20 h-20 mx-auto rounded-2xl bg-gradient-gold flex items-center justify-center shadow-glow animate-float">
+                      <Box className="w-10 h-10 text-primary" />
+                    </div>
+                    <div>
+                      <p className="font-display text-xl font-semibold text-foreground">Interactive 3D Preview</p>
+                      <p className="text-sm text-muted-foreground mt-1">Click to explore the customizer</p>
+                    </div>
+                  </div>
+
+                  {/* Decoration */}
+                  <div className="absolute inset-0 pointer-events-none">
+                    <div className="absolute top-4 left-4 w-12 h-12 rounded-xl bg-white/50 backdrop-blur-sm border border-white/30 flex items-center justify-center">
+                      <RotateCcw className="w-5 h-5 text-primary/70" />
+                    </div>
+                    <div className="absolute bottom-4 right-4 w-12 h-12 rounded-xl bg-white/50 backdrop-blur-sm border border-white/30 flex items-center justify-center">
+                      <ZoomIn className="w-5 h-5 text-primary/70" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Info Bar */}
+                <div className="mt-4 flex items-center justify-between p-4 rounded-xl bg-white border border-border/50">
+                  <div>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wider">Available Now</p>
+                    <p className="font-display font-semibold text-foreground">3D Shirt Customizer</p>
+                  </div>
+                  <Link
+                    to="/customize-3d/shirt"
+                    className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-white hover:scale-110 transition-transform"
+                  >
+                    <ArrowRight className="w-4 h-4" />
+                  </Link>
+                </div>
+              </div>
+
+              {/* Decorative Elements */}
+              <div className="absolute -top-4 -right-4 w-24 h-24 bg-accent/20 rounded-full blur-2xl" />
+              <div className="absolute -bottom-4 -left-4 w-32 h-32 bg-primary/10 rounded-full blur-2xl" />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Categories Section */}
+      <section className="py-20 bg-primary/[0.03]">
         <div className="container mx-auto px-4 lg:px-8">
           <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-12">
             <div>
@@ -250,7 +348,7 @@ export default function HomePage() {
                 Shop by Category
               </h2>
             </div>
-            <Link 
+            <Link
               to="/products"
               className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:gap-3 transition-all duration-300"
             >
@@ -267,8 +365,8 @@ export default function HomePage() {
               >
                 {/* Image */}
                 <div className="aspect-[4/5] bg-gradient-to-br from-muted/50 to-muted/30 p-8 relative overflow-hidden">
-                  <img 
-                    src={category.image} 
+                  <img
+                    src={category.image}
                     alt={category.name}
                     className="w-full h-full object-contain transition-transform duration-700 group-hover:scale-110"
                   />
@@ -300,7 +398,7 @@ export default function HomePage() {
             {/* Decorations */}
             <div className="absolute top-0 right-0 w-96 h-96 bg-white/5 rounded-full blur-3xl" />
             <div className="absolute bottom-0 left-0 w-72 h-72 bg-accent/10 rounded-full blur-2xl" />
-            
+
             <div className="relative max-w-2xl mx-auto text-center">
               <Sparkles className="w-12 h-12 text-accent mx-auto mb-6" />
               <h2 className="font-display text-4xl sm:text-5xl font-semibold text-white mb-6">
@@ -309,7 +407,7 @@ export default function HomePage() {
               <p className="text-lg text-white/70 mb-8">
                 Begin your bespoke journey today. Our expert tailors are ready to bring your vision to life.
               </p>
-              <Link 
+              <Link
                 to="/products"
                 className="inline-flex items-center gap-2 px-8 py-4 bg-accent text-primary rounded-full font-semibold shadow-glow hover:scale-105 transition-all duration-300"
               >

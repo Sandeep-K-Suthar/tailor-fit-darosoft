@@ -20,6 +20,7 @@ import Account from "./pages/Account";
 import Admin from "./pages/Admin";
 import Dashboard from "./pages/Dashboard";
 import NotFound from "./pages/NotFound";
+import Customize3D from "./pages/Customize3D";
 
 const queryClient = new QueryClient();
 
@@ -38,6 +39,7 @@ const App = () => (
                   <Route path="/products" element={<Products />} />
                   <Route path="/products/:id" element={<ProductDetail />} />
                   <Route path="/customize/:id" element={<Customize />} />
+                  <Route path="/customize-3d/:productType" element={<Customize3D />} />
                   <Route path="/cart" element={<Cart />} />
                   <Route path="/checkout" element={<Checkout />} />
                   <Route path="/order/:orderNumber" element={<OrderConfirmation />} />

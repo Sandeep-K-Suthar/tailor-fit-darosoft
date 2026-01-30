@@ -17,6 +17,9 @@ import { toast } from 'sonner';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { FabricOption, CustomizationOption } from '@/types/shirt';
 import { Product } from '@/types/product';
+import type { Fabric3D, FabricCategory } from '@/types/fabric';
+import { FABRIC_CATEGORIES } from '@/types/fabric';
+import { Box } from 'lucide-react';
 
 interface CustomerData {
   _id: string;
@@ -94,6 +97,24 @@ export function AdminDashboard() {
   const [admins, setAdmins] = useState<AdminData[]>([]);
   const [adminsLoading, setAdminsLoading] = useState(false);
 
+  // 3D Fabrics state
+  const [fabrics3D, setFabrics3D] = useState<Fabric3D[]>([]);
+  const [fabrics3DLoading, setFabrics3DLoading] = useState(false);
+  const [is3DFabricDialogOpen, setIs3DFabricDialogOpen] = useState(false);
+  const [editing3DFabric, setEditing3DFabric] = useState<Fabric3D | null>(null);
+  const [fabric3DForm, setFabric3DForm] = useState({
+    name: '',
+    category: 'cotton' as FabricCategory,
+    colorMapUrl: '',
+    normalMapUrl: '',
+    roughnessMapUrl: '',
+    baseColor: '#FFFFFF',
+    roughness: 0.8,
+    metalness: 0.0,
+    normalScale: 1.0,
+    price: 0,
+  });
+
   const [newName, setNewName] = useState('');
   const [newImage, setNewImage] = useState('');
   const [newPreviewImage, setNewPreviewImage] = useState('');
@@ -130,6 +151,7 @@ export function AdminDashboard() {
   const allCategories = [
     { id: 'orders', label: 'Orders', icon: ShoppingCart, items: orders },
     { id: 'products', label: 'Products', icon: Package, items: products },
+    { id: '3d-fabrics', label: '3D Fabrics', icon: Box, items: fabrics3D },
     { id: 'customers', label: 'Customers', icon: Users, items: customers },
     ...(isSuperAdmin ? [{ id: 'admins', label: 'Admins', icon: Shield, items: admins }] : []),
   ];
@@ -139,12 +161,12 @@ export function AdminDashboard() {
     if (isSuperAdmin) {
       return {
         group1: allCategories.filter(c => c.id === 'customers' || c.id === 'admins'),
-        group2: allCategories.filter(c => c.id === 'orders' || c.id === 'products'),
-        group3: allCategories.filter(c => !['customers', 'admins', 'orders', 'products'].includes(c.id)),
+        group2: allCategories.filter(c => c.id === 'orders' || c.id === 'products' || c.id === '3d-fabrics'),
+        group3: allCategories.filter(c => !['customers', 'admins', 'orders', 'products', '3d-fabrics'].includes(c.id)),
       };
     } else {
       return {
-        group1: allCategories.filter(c => c.id === 'orders' || c.id === 'products'),
+        group1: allCategories.filter(c => c.id === 'orders' || c.id === 'products' || c.id === '3d-fabrics'),
         group2: [],
       };
     }
@@ -168,7 +190,10 @@ export function AdminDashboard() {
   };
 
   const fetchCustomers = async () => {
-    if (!token || token === 'legacy-token') return;
+    if (!token || token === 'legacy-token') {
+      // Silently skip - not authenticated properly
+      return;
+    }
     setCustomersLoading(true);
     try {
       const res = await fetch('/api/admin/customers', {
@@ -178,14 +203,18 @@ export function AdminDashboard() {
       const data = await res.json();
       setCustomers(data.data || []);
     } catch (err: any) {
-      toast.error(err.message || 'Failed to load customers');
+      console.error('[Admin] fetchCustomers error:', err.message);
+      // Silently fail - no toast to avoid spam
     } finally {
       setCustomersLoading(false);
     }
   };
 
   const fetchAdmins = async () => {
-    if (!token || token === 'legacy-token' || !isSuperAdmin) return;
+    if (!token || token === 'legacy-token' || !isSuperAdmin) {
+      // Silently skip - not super admin
+      return;
+    }
     setAdminsLoading(true);
     try {
       const res = await fetch('/api/admin/list', {
@@ -195,9 +224,132 @@ export function AdminDashboard() {
       const data = await res.json();
       setAdmins(data.data || []);
     } catch (err: any) {
-      toast.error(err.message || 'Failed to load admins');
+      console.error('[Admin] fetchAdmins error:', err.message);
+      // Silently fail - no toast to avoid spam
     } finally {
       setAdminsLoading(false);
+    }
+  };
+
+  // Fetch 3D Fabrics
+  const fetch3DFabrics = async () => {
+    setFabrics3DLoading(true);
+    try {
+      const res = await fetch('/api/fabrics');
+      if (!res.ok) throw new Error('Failed to load 3D fabrics');
+      const data = await res.json();
+      setFabrics3D(data.data || []);
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to load 3D fabrics');
+    } finally {
+      setFabrics3DLoading(false);
+    }
+  };
+
+  // 3D Fabric CRUD
+  const reset3DFabricForm = () => {
+    setFabric3DForm({
+      name: '',
+      category: 'cotton',
+      colorMapUrl: '',
+      normalMapUrl: '',
+      roughnessMapUrl: '',
+      baseColor: '#FFFFFF',
+      roughness: 0.8,
+      metalness: 0.0,
+      normalScale: 1.0,
+      price: 0,
+    });
+    setEditing3DFabric(null);
+  };
+
+  const open3DFabricDialog = (fabric?: Fabric3D) => {
+    if (fabric) {
+      setEditing3DFabric(fabric);
+      setFabric3DForm({
+        name: fabric.name,
+        category: fabric.category,
+        colorMapUrl: fabric.colorMapUrl,
+        normalMapUrl: fabric.normalMapUrl || '',
+        roughnessMapUrl: fabric.roughnessMapUrl || '',
+        baseColor: fabric.baseColor,
+        roughness: fabric.roughness,
+        metalness: fabric.metalness,
+        normalScale: fabric.normalScale,
+        price: fabric.price,
+      });
+    } else {
+      reset3DFabricForm();
+    }
+    setIs3DFabricDialogOpen(true);
+  };
+
+  const handle3DFabricTextureUpload = async (e: React.ChangeEvent<HTMLInputElement>, field: 'colorMapUrl' | 'normalMapUrl' | 'roughnessMapUrl') => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+    const path = await uploadFile(file);
+    if (path) setFabric3DForm(prev => ({ ...prev, [field]: path }));
+  };
+
+  const save3DFabric = async () => {
+    if (!fabric3DForm.name || !fabric3DForm.colorMapUrl) {
+      toast.error('Name and Color Map are required');
+      return;
+    }
+    try {
+      const method = editing3DFabric ? 'PUT' : 'POST';
+      const url = editing3DFabric ? `/api/fabrics/${editing3DFabric._id}` : '/api/fabrics';
+
+      // For new fabrics, we need to use FormData
+      if (!editing3DFabric) {
+        // Note: The API expects FormData for POST, but we've already uploaded textures
+        // So we'll just send JSON with the paths
+        const res = await fetch(url, {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ...fabric3DForm,
+            price: Number(fabric3DForm.price),
+          }),
+        });
+        if (!res.ok) {
+          const data = await res.json();
+          throw new Error(data.error || 'Failed to save fabric');
+        }
+      } else {
+        const res = await fetch(url, {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ...fabric3DForm,
+            price: Number(fabric3DForm.price),
+          }),
+        });
+        if (!res.ok) {
+          const data = await res.json();
+          throw new Error(data.error || 'Failed to save fabric');
+        }
+      }
+
+      toast.success(editing3DFabric ? '3D Fabric updated' : '3D Fabric added');
+      setIs3DFabricDialogOpen(false);
+      reset3DFabricForm();
+      fetch3DFabrics();
+    } catch (err: any) {
+      toast.error(err.message);
+    }
+  };
+
+  const delete3DFabric = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this fabric?')) return;
+    try {
+      const res = await fetch(`/api/fabrics/${id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Failed to delete fabric');
+      toast.success('3D Fabric deleted');
+      fetch3DFabrics();
+    } catch (err: any) {
+      toast.error(err.message);
     }
   };
 
@@ -251,6 +403,7 @@ export function AdminDashboard() {
   useEffect(() => {
     fetchOrders();
     fetchProducts();
+    fetch3DFabrics();
     if (isSuperAdmin) {
       fetchCustomers();
       fetchAdmins();
@@ -260,6 +413,7 @@ export function AdminDashboard() {
   useEffect(() => {
     if (activeTab === 'products') fetchProducts();
     if (activeTab === 'orders') fetchOrders();
+    if (activeTab === '3d-fabrics') fetch3DFabrics();
     if (activeTab === 'customers') fetchCustomers();
     if (activeTab === 'admins') fetchAdmins();
   }, [activeTab, token, isSuperAdmin]);
@@ -879,6 +1033,177 @@ export function AdminDashboard() {
                 <Button onClick={fetchAdmins} variant="outline" className="h-12 px-6 rounded-xl">
                   Refresh Admins
                 </Button>
+              ) : activeTab === '3d-fabrics' ? (
+                <Dialog open={is3DFabricDialogOpen} onOpenChange={setIs3DFabricDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button onClick={() => open3DFabricDialog()} className="h-12 px-6 rounded-xl bg-gradient-luxury text-white shadow-soft hover:shadow-elevated transition-all">
+                      <Plus className="w-4 h-4 mr-2" />
+                      Add 3D Fabric
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl">
+                    <DialogHeader>
+                      <DialogTitle className="font-display text-xl">{editing3DFabric ? 'Edit 3D Fabric' : 'Add New 3D Fabric'}</DialogTitle>
+                    </DialogHeader>
+                    <div className="py-4 space-y-6">
+                      {/* Basic Info */}
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label>Fabric Name *</Label>
+                          <Input
+                            value={fabric3DForm.name}
+                            onChange={(e) => setFabric3DForm(prev => ({ ...prev, name: e.target.value }))}
+                            placeholder="e.g., Navy Blue Cotton"
+                            className="rounded-xl"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Category *</Label>
+                          <Select value={fabric3DForm.category} onValueChange={(v: FabricCategory) => setFabric3DForm(prev => ({ ...prev, category: v }))}>
+                            <SelectTrigger className="rounded-xl"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              {FABRIC_CATEGORIES.map(c => (
+                                <SelectItem key={c.value} value={c.value}>{c.icon} {c.label}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+
+                      {/* PBR Textures */}
+                      <div className="space-y-4">
+                        <Label className="text-base font-semibold flex items-center gap-2">
+                          <Layers className="w-4 h-4" /> PBR Texture Maps
+                        </Label>
+                        <div className="grid grid-cols-3 gap-4">
+                          {/* Color Map */}
+                          <div className="space-y-2">
+                            <Label className="text-xs text-muted-foreground">Color Map *</Label>
+                            <input id="colorMap3D" type="file" accept="image/*" onChange={(e) => handle3DFabricTextureUpload(e, 'colorMapUrl')} className="hidden" />
+                            <Button variant="outline" className="w-full h-24 rounded-xl flex flex-col gap-2" onClick={() => document.getElementById('colorMap3D')?.click()}>
+                              {fabric3DForm.colorMapUrl ? (
+                                <img src={fabric3DForm.colorMapUrl} alt="" className="w-16 h-16 object-cover rounded-lg" />
+                              ) : (
+                                <>
+                                  <Upload className="w-5 h-5" />
+                                  <span className="text-xs">Color</span>
+                                </>
+                              )}
+                            </Button>
+                          </div>
+                          {/* Normal Map */}
+                          <div className="space-y-2">
+                            <Label className="text-xs text-muted-foreground">Normal Map</Label>
+                            <input id="normalMap3D" type="file" accept="image/*" onChange={(e) => handle3DFabricTextureUpload(e, 'normalMapUrl')} className="hidden" />
+                            <Button variant="outline" className="w-full h-24 rounded-xl flex flex-col gap-2" onClick={() => document.getElementById('normalMap3D')?.click()}>
+                              {fabric3DForm.normalMapUrl ? (
+                                <img src={fabric3DForm.normalMapUrl} alt="" className="w-16 h-16 object-cover rounded-lg" />
+                              ) : (
+                                <>
+                                  <Upload className="w-5 h-5" />
+                                  <span className="text-xs">Normal</span>
+                                </>
+                              )}
+                            </Button>
+                          </div>
+                          {/* Roughness Map */}
+                          <div className="space-y-2">
+                            <Label className="text-xs text-muted-foreground">Roughness Map</Label>
+                            <input id="roughnessMap3D" type="file" accept="image/*" onChange={(e) => handle3DFabricTextureUpload(e, 'roughnessMapUrl')} className="hidden" />
+                            <Button variant="outline" className="w-full h-24 rounded-xl flex flex-col gap-2" onClick={() => document.getElementById('roughnessMap3D')?.click()}>
+                              {fabric3DForm.roughnessMapUrl ? (
+                                <img src={fabric3DForm.roughnessMapUrl} alt="" className="w-16 h-16 object-cover rounded-lg" />
+                              ) : (
+                                <>
+                                  <Upload className="w-5 h-5" />
+                                  <span className="text-xs">Roughness</span>
+                                </>
+                              )}
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Material Properties */}
+                      <div className="space-y-4">
+                        <Label className="text-base font-semibold flex items-center gap-2">
+                          <Sparkles className="w-4 h-4" /> Material Properties
+                        </Label>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label className="text-xs text-muted-foreground">Base Color</Label>
+                            <div className="flex gap-2 items-center">
+                              <input
+                                type="color"
+                                value={fabric3DForm.baseColor}
+                                onChange={(e) => setFabric3DForm(prev => ({ ...prev, baseColor: e.target.value }))}
+                                className="w-10 h-10 rounded-lg border cursor-pointer"
+                              />
+                              <Input
+                                value={fabric3DForm.baseColor}
+                                onChange={(e) => setFabric3DForm(prev => ({ ...prev, baseColor: e.target.value }))}
+                                className="flex-1 rounded-xl"
+                              />
+                            </div>
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-xs text-muted-foreground">Price (PKR) *</Label>
+                            <Input
+                              type="number"
+                              value={fabric3DForm.price}
+                              onChange={(e) => setFabric3DForm(prev => ({ ...prev, price: Number(e.target.value) }))}
+                              className="rounded-xl"
+                            />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-3 gap-4">
+                          <div className="space-y-2">
+                            <Label className="text-xs text-muted-foreground">Roughness (0-1)</Label>
+                            <Input
+                              type="number"
+                              step="0.1"
+                              min="0"
+                              max="1"
+                              value={fabric3DForm.roughness}
+                              onChange={(e) => setFabric3DForm(prev => ({ ...prev, roughness: Number(e.target.value) }))}
+                              className="rounded-xl"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-xs text-muted-foreground">Metalness (0-1)</Label>
+                            <Input
+                              type="number"
+                              step="0.1"
+                              min="0"
+                              max="1"
+                              value={fabric3DForm.metalness}
+                              onChange={(e) => setFabric3DForm(prev => ({ ...prev, metalness: Number(e.target.value) }))}
+                              className="rounded-xl"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-xs text-muted-foreground">Normal Scale (0-2)</Label>
+                            <Input
+                              type="number"
+                              step="0.1"
+                              min="0"
+                              max="2"
+                              value={fabric3DForm.normalScale}
+                              onChange={(e) => setFabric3DForm(prev => ({ ...prev, normalScale: Number(e.target.value) }))}
+                              className="rounded-xl"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button variant="outline" onClick={() => setIs3DFabricDialogOpen(false)} className="rounded-xl">Cancel</Button>
+                      <Button onClick={save3DFabric} className="rounded-xl bg-gradient-luxury text-white">
+                        {editing3DFabric ? 'Update Fabric' : 'Add Fabric'}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
               ) : activeTab === 'products' ? (
                 <Dialog open={isProductDialogOpen} onOpenChange={setIsProductDialogOpen}>
                   <DialogTrigger asChild>
@@ -1118,7 +1443,7 @@ export function AdminDashboard() {
                                               <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
                                                 {['belt', 'waist'].includes(group.category?.toLowerCase()) ? 'Fixed Variants (All Fabrics)' : `Fabric Variants for ${opt.name || 'this option'}`}
                                               </h4>
-                                              <Button variant="ghost" size="xs" onClick={() => setActiveVariantOption(null)} className="h-6 text-xs text-muted-foreground">Close</Button>
+                                              <Button variant="ghost" size="sm" onClick={() => setActiveVariantOption(null)} className="h-6 text-xs text-muted-foreground">Close</Button>
                                             </div>
 
                                             {['belt', 'waist'].includes(group.category?.toLowerCase()) ? (
@@ -1387,7 +1712,7 @@ export function AdminDashboard() {
         </div>
 
         {/* Content Area */}
-        <div className="p-6 lg:p-10 max-w-7xl mx-auto animate-fade-up">
+        <div key={activeTab} className="p-6 lg:p-10 max-w-7xl mx-auto min-h-[50vh] transition-opacity duration-200">
           {/* Orders Content */}
           {activeTab === 'orders' ? (
             ordersLoading ? (
@@ -1872,6 +2197,75 @@ export function AdminDashboard() {
                       <div className="flex items-center justify-between mt-3">
                         <span className="text-xs px-2 py-1 rounded-full bg-primary/10 text-primary capitalize">{product.category}</span>
                         <span className="font-semibold text-sm">{formatPrice(product.basePrice)}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )
+          ) : activeTab === '3d-fabrics' ? (
+            /* 3D Fabrics Tab */
+            fabrics3DLoading ? (
+              <div className="flex items-center justify-center py-32">
+                <div className="w-12 h-12 rounded-full border-4 border-primary/20 border-t-primary animate-spin" />
+              </div>
+            ) : fabrics3D.length === 0 ? (
+              <div className="text-center py-32">
+                <Box className="w-16 h-16 text-muted-foreground/30 mx-auto mb-4" />
+                <h3 className="font-display text-xl font-medium">No 3D Fabrics yet</h3>
+                <p className="text-muted-foreground">Add your first PBR fabric for 3D customization</p>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Run <code className="px-2 py-1 bg-muted rounded text-xs">node server/utils/fabricSeeder.js</code> to seed sample fabrics
+                </p>
+              </div>
+            ) : (
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {fabrics3D.filter(f => !searchTerm || f.name.toLowerCase().includes(searchTerm.toLowerCase())).map((fabric, i) => (
+                  <div key={fabric._id} className="group bg-white rounded-2xl border border-border/50 overflow-hidden shadow-soft hover:shadow-elevated transition-all duration-500 animate-fade-up" style={{ animationDelay: `${i * 0.05}s` }}>
+                    <div className="relative aspect-square bg-muted/30">
+                      {fabric.colorMapUrl ? (
+                        <img src={fabric.colorMapUrl} alt={fabric.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center"><Box className="w-12 h-12 text-muted-foreground/30" /></div>
+                      )}
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-all flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100">
+                        <Button size="sm" onClick={() => open3DFabricDialog(fabric)} className="rounded-lg"><Edit className="w-4 h-4 mr-1" />Edit</Button>
+                        <Button variant="destructive" size="sm" onClick={() => delete3DFabric(fabric._id)} className="rounded-lg"><Trash2 className="w-4 h-4" /></Button>
+                      </div>
+                      {/* Category Badge */}
+                      <div className="absolute top-2 left-2">
+                        <span className="px-2 py-1 rounded-full text-xs font-medium bg-white/90 text-foreground shadow-sm capitalize">
+                          {FABRIC_CATEGORIES.find(c => c.value === fabric.category)?.icon} {fabric.category}
+                        </span>
+                      </div>
+                      {/* PBR Badge */}
+                      {fabric.normalMapUrl && fabric.roughnessMapUrl && (
+                        <div className="absolute top-2 right-2">
+                          <span className="px-2 py-1 rounded-full text-xs font-medium bg-emerald-500/90 text-white shadow-sm">
+                            Full PBR
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="p-4">
+                      <h3 className="font-medium text-foreground truncate">{fabric.name}</h3>
+                      <div className="flex items-center gap-2 mt-2">
+                        <div
+                          className="w-5 h-5 rounded-full border border-border shadow-sm"
+                          style={{ backgroundColor: fabric.baseColor }}
+                          title={`Base color: ${fabric.baseColor}`}
+                        />
+                        <span className="text-xs text-muted-foreground">
+                          R: {fabric.roughness.toFixed(1)} | M: {fabric.metalness.toFixed(1)}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between mt-3">
+                        <div className="flex gap-1">
+                          {fabric.colorMapUrl && <span className="w-2 h-2 rounded-full bg-primary" title="Color Map" />}
+                          {fabric.normalMapUrl && <span className="w-2 h-2 rounded-full bg-blue-500" title="Normal Map" />}
+                          {fabric.roughnessMapUrl && <span className="w-2 h-2 rounded-full bg-amber-500" title="Roughness Map" />}
+                        </div>
+                        <span className="font-semibold text-sm">{formatPrice(fabric.price)}</span>
                       </div>
                     </div>
                   </div>
