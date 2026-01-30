@@ -23,6 +23,7 @@ This document maintains a record of the development phases, architectural decisi
 - Initialized **Express 5** backend with MongoDB connection and error handling middleware.
 
 # Phase 2: Product Catalog & Database Design
+*16/01/2026*
 - Designed Mongoose schemas for `Product`, `Order`, and `Customer`.
 - Implemented **Pricing Engine** supporting currency formatting (PKR).
 - Created API endpoints:
@@ -31,6 +32,7 @@ This document maintains a record of the development phases, architectural decisi
 - Built `ProductList` and `ProductDetail` pages with responsive grid layouts.
 
 # Phase 3: The 2D Customizer Engine
+*18/01/2026*
 - **Core Feature:** Developed the layer-based image composition engine.
 - Implemented `Z-Index` management for correct asset layering (e.g., Shirt Body < Sleeves < Collar < Buttons).
 - Created `CustomizationContext` to manage complex state (selected fabrics, styles, measurements).
@@ -38,12 +40,14 @@ This document maintains a record of the development phases, architectural decisi
 - Integrated `lucide-react` for intuitive UI iconography.
 
 # Phase 4: Advanced Customization Logic
+*19/01/2026*
 - Added support for multiple categories: **Suits, Shirts, Pants**.
 - Implemented logic for mutually exclusive options (e.g., Short Sleeves vs. Barrel Cuffs).
 - Created the "Visual Selector" UI for fabrics and patterns.
 - **Optimization:** Added asset preloading to prevent "flickering" during customization.
 
 # Phase 5: Shopping Cart & Checkout Flow
+*20/01/2026*
 - Built `CartContext` with persistent local storage.
 - Implemented `Checkout` page with:
     - Customer information form.
@@ -52,6 +56,7 @@ This document maintains a record of the development phases, architectural decisi
 - Connected checkout payload to `POST /api/orders` to save complex customization data.
 
 # Phase 6: Authentication & User Accounts
+*22/01/2026*
 - **Security:** Implemented JWT-based authentication with `bcrypt` password hashing.
 - **Customer Portal:**
     - Login/Register pages.
@@ -60,6 +65,7 @@ This document maintains a record of the development phases, architectural decisi
 - **Save Designs:** Enabled users to save drafts ("Wishlist") and restore them later.
 
 # Phase 7: Admin Dashboard
+*24/01/2026*
 - Built a comprehensive Admin Panel (`/admin`).
 - Features:
     - **Order Management:** View details, update status (Pending -> Shipped).
@@ -68,6 +74,7 @@ This document maintains a record of the development phases, architectural decisi
 - Secured with separate Admin Auth Middleware to prevent unauthorized access.
 
 # Phase 8: Optimization & Polish
+*26/01/2026*
 - **Code Cleanup:** Removed unused legacy scripts and experimental AI components.
 - **Performance:** Optimized image loading and bundle size.
 - **UX Refinements:** Added toast notifications (Sonner) for user feedback.
